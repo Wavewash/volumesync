@@ -7,7 +7,8 @@ Ensure that all applications in the Windows Volume Mixer are synchronized with t
 
 ## Features
 - **System Tray Icon:** Runs in the background without a console window.
-- **Toggle Enabled:** Right-click the tray icon to enable or disable synchronization.
+- **Toggle Enabled:** Right-click the tray icon to enable or disable continuous synchronization (default: disabled).
+- **Sync Now:** A menu option for a one-time synchronization pass.
 - **Visual Feedback:** The icon changes color (Blue = Enabled, Gray = Disabled).
 - **Standalone EXE:** Can be built into a single executable file for easy distribution.
 

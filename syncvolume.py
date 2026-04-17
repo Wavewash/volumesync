@@ -16,7 +16,7 @@ logging.basicConfig(filename=log_path, level=logging.DEBUG,
 
 class VolumeSyncApp:
     def __init__(self):
-        self.enabled = True
+        self.enabled = False
         self.running = True
         self.icon = None
         self._setup_icon()
@@ -33,9 +33,11 @@ class VolumeSyncApp:
     def _setup_icon(self):
         menu = Menu(
             MenuItem('Enabled', self._toggle_enabled, checked=lambda item: self.enabled),
+            MenuItem('Sync Now', self._on_sync_now),
             MenuItem('Exit', self._on_exit)
         )
-        self.icon = Icon("VolumeSync", self._create_image("blue"), "VolumeSync", menu)
+        # Initial state is disabled, so use gray icon
+        self.icon = Icon("VolumeSync", self._create_image("gray"), "VolumeSync", menu)
 
     def _toggle_enabled(self, icon, item):
         self.enabled = not self.enabled
@@ -43,10 +45,42 @@ class VolumeSyncApp:
         self.icon.icon = self._create_image(new_color)
         logging.info(f"Sync enabled: {self.enabled}")
 
+    def _on_sync_now(self, icon, item):
+        """Trigger a one-time sync in a separate thread to avoid blocking the UI."""
+        def run_once():
+            comtypes.CoInitialize()
+            try:
+                self.perform_sync()
+                logging.info("One-time sync completed manually.")
+            finally:
+                comtypes.CoUninitialize()
+        
+        threading.Thread(target=run_once, daemon=True).start()
+
     def _on_exit(self, icon, item):
         self.running = False
         self.icon.stop()
         logging.info("App exiting.")
+
+    def perform_sync(self):
+        """Perform a single synchronization pass. Assumes COM is initialized."""
+        try:
+            sessions = AudioUtilities.GetAllSessions()
+            for session in sessions:
+                try:
+                    volume_control = session.SimpleAudioVolume
+                    if volume_control:
+                        current_app_vol = volume_control.GetMasterVolume()
+                        target_app_vol = 1.0
+                        
+                        if abs(current_app_vol - target_app_vol) > 0.001:
+                            volume_control.SetMasterVolume(target_app_vol, None)
+                            name = session.Process.name() if session.Process else "System Session"
+                            logging.debug(f"Synced {name} to 1.0")
+                except Exception:
+                    continue
+        except Exception as e:
+            logging.error(f"Error in perform_sync: {e}")
 
     def sync_loop(self):
         """Background loop for volume synchronization with COM initialization."""
@@ -57,28 +91,7 @@ class VolumeSyncApp:
         try:
             while self.running:
                 if self.enabled:
-                    try:
-                        sessions = AudioUtilities.GetAllSessions()
-                        for session in sessions:
-                            # Try to sync sessions that have a simple audio volume interface
-                            # We check if it has a process or if it's a system session we care about
-                            try:
-                                volume_control = session.SimpleAudioVolume
-                                if volume_control:
-                                    current_app_vol = volume_control.GetMasterVolume()
-                                    target_app_vol = 1.0
-                                    
-                                    if abs(current_app_vol - target_app_vol) > 0.001:
-                                        volume_control.SetMasterVolume(target_app_vol, None)
-                                        # Use process name for logging if available
-                                        name = session.Process.name() if session.Process else "System Session"
-                                        logging.debug(f"Synced {name} to 1.0")
-                            except Exception as ex:
-                                # Ignore individual session errors
-                                continue
-                    except Exception as e:
-                        logging.error(f"Error in sync cycle: {e}")
-
+                    self.perform_sync()
                 time.sleep(1.0) # Increased sleep slightly for stability
         finally:
             comtypes.CoUninitialize()

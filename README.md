@@ -5,10 +5,18 @@ VolumeSync is a lightweight Windows utility that automatically synchronizes indi
 ## 🚀 Features
 
 - **Automatic Sync:** Snaps application volumes to 100% relative to the master volume.
+- **Sync Now:** Perform a one-time synchronization without running a continuous loop.
 - **System Tray Integration:** Runs quietly in the background.
 - **Visual Feedback:** The tray icon changes color based on the sync status (Blue = Enabled, Gray = Disabled).
 - **Toggle Control:** Easily enable or disable synchronization via a right-click menu.
 - **Low Resource Usage:** Minimal CPU and memory footprint.
+
+## 🚀 Usage
+
+1. **Start:** Run `VolumeSync.exe`. The icon will be **gray** (disabled) by default.
+2. **Toggle:** Right-click the icon and click "Enabled" to start continuous synchronization. The icon will turn **blue**.
+3. **One-time Sync:** Right-click the icon and select "Sync Now" to perform a single synchronization pass without enabling the continuous loop.
+4. **Exit:** Right-click and select "Exit" to close the application.
 
 ## 🛠️ Installation
 
