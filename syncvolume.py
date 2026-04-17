@@ -11,7 +11,7 @@ from pycaw.pycaw import AudioUtilities
 
 # Setup logging to a file in the same directory as the executable
 log_path = os.path.join(os.path.dirname(sys.executable if getattr(sys, 'frozen', False) else __file__), "volumesync.log")
-logging.basicConfig(filename=log_path, level=logging.DEBUG, 
+logging.basicConfig(filename=log_path, level=logging.ERROR, 
                     format='%(asctime)s - %(levelname)s - %(message)s')
 
 class VolumeSyncApp:
@@ -20,7 +20,6 @@ class VolumeSyncApp:
         self.running = True
         self.icon = None
         self._setup_icon()
-        logging.info("App initialized.")
 
     def _create_image(self, color="blue"):
         width = 64
@@ -43,7 +42,6 @@ class VolumeSyncApp:
         self.enabled = not self.enabled
         new_color = "blue" if self.enabled else "gray"
         self.icon.icon = self._create_image(new_color)
-        logging.info(f"Sync enabled: {self.enabled}")
 
     def _on_sync_now(self, icon, item):
         """Trigger a one-time sync in a separate thread to avoid blocking the UI."""
@@ -51,16 +49,14 @@ class VolumeSyncApp:
             comtypes.CoInitialize()
             try:
                 self.perform_sync()
-                logging.info("One-time sync completed manually.")
             finally:
                 comtypes.CoUninitialize()
-        
+
         threading.Thread(target=run_once, daemon=True).start()
 
     def _on_exit(self, icon, item):
         self.running = False
         self.icon.stop()
-        logging.info("App exiting.")
 
     def perform_sync(self):
         """Perform a single synchronization pass. Assumes COM is initialized."""
@@ -72,11 +68,9 @@ class VolumeSyncApp:
                     if volume_control:
                         current_app_vol = volume_control.GetMasterVolume()
                         target_app_vol = 1.0
-                        
+
                         if abs(current_app_vol - target_app_vol) > 0.001:
                             volume_control.SetMasterVolume(target_app_vol, None)
-                            name = session.Process.name() if session.Process else "System Session"
-                            logging.debug(f"Synced {name} to 1.0")
                 except Exception:
                     continue
         except Exception as e:
@@ -84,10 +78,9 @@ class VolumeSyncApp:
 
     def sync_loop(self):
         """Background loop for volume synchronization with COM initialization."""
-        logging.info("Sync thread started.")
         # CRITICAL: Initialize COM for this specific thread
         comtypes.CoInitialize()
-        
+
         try:
             while self.running:
                 if self.enabled:
@@ -95,8 +88,6 @@ class VolumeSyncApp:
                 time.sleep(1.0) # Increased sleep slightly for stability
         finally:
             comtypes.CoUninitialize()
-            logging.info("Sync thread stopped.")
-
     def run(self):
         sync_thread = threading.Thread(target=self.sync_loop, daemon=True)
         sync_thread.start()
